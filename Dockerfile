@@ -1,40 +1,16 @@
-FROM golang:1.24.4 AS builder
+FROM nikolaik/python-nodejs:python3.10-nodejs19
 
-WORKDIR /app
+RUN sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list && \
+    sed -i '/security.debian.org/d' /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends ffmpeg aria2 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN apt-get update && apt-get install -y \
-    git \
-    gcc \
-    zlib1g-dev \
-    && rm -rf /var/lib/apt/lists/*
+COPY . /app/
+WORKDIR /app/
 
-COPY go.mod go.sum setup_ntgcalls.go ./
-RUN go mod download
+RUN python -m pip install --no-cache-dir --upgrade pip
+RUN pip3 install --no-cache-dir --upgrade --requirement requirements.txt
 
-COPY . .
-
-RUN go generate
-RUN CGO_ENABLED=1 go build -ldflags="-w -s" -o myapp .
-
-FROM ubuntu:22.04
-
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    wget \
-    zlib1g \
-    && wget -O /usr/local/bin/yt-dlp \
-       https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux \
-    && chmod +x /usr/local/bin/yt-dlp \
-    && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-COPY --from=builder /app/myapp /app/
-COPY --from=builder /app/pkg/lang/locale /app/pkg/lang/locale
-
-RUN chmod +x /app/myapp
-
-WORKDIR /app
-
-ENTRYPOINT ["/app/myapp"]
-VOLUME ["/app"]
+CMD bash start
