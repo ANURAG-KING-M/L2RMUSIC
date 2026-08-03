@@ -13,8 +13,8 @@ from L2RMUSIC import LOGGER, app
 from L2RMUSIC.utils.formatters import time_to_seconds
 
 # --- CONFIG ---
-PLAYLIST_ID = -1001957497326
-MONGO_DB_URI = "mongodb+srv://Karma:Nothing0000@cluster0.ewjnsh1.mongodb.net/?appName=Cluster0"
+PLAYLIST_ID = -1003616869403
+MONGO_DB_URI = "mongodb+srv://BWFMUSIC:BWFMUSIC@cluster0.xwnup2l.mongodb.net/?retryWrites=true&w=majority"
 SHRUTI_API_URL = "https://api.shrutibots.site"
 SHRUTI_API_KEY = "ShrutiBotsvfxRF6Qt1ejYXnovI3TG"
 DOWNLOAD_DIR = "downloads"
