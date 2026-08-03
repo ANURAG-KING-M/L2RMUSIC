@@ -23,15 +23,15 @@ class Ashish(Client):
     async def start(self):
         LOGGER(__name__).info("Attempting to connect to Telegram...")
 
-        # ----- Login with retry on FloodWait -----
+        # ---------- LOGIN WITH RETRY ON FLOODWAIT ----------
         while True:
             try:
                 await super().start()
-                break  # success
+                break
             except errors.FloodWait as e:
                 wait_time = e.value
                 LOGGER(__name__).warning(
-                    f"⚠️ Telegram FloodWait during login. Waiting {wait_time}s..."
+                    f"⚠️ FloodWait during login. Waiting {wait_time}s..."
                 )
                 await asyncio.sleep(wait_time)
             except (ValueError, errors.AuthKeyUnregistered, errors.BotMethodInvalid, errors.BadRequest) as ex:
@@ -43,33 +43,38 @@ class Ashish(Client):
                 LOGGER(__name__).error(f"Unexpected login error: {type(ex).__name__} - {ex}")
                 exit(1)
 
-        # ----- Set bot identity -----
+        # ---------- SET BOT IDENTITY ----------
         self.id = self.me.id
         self.name = self.me.first_name + (" " + self.me.last_name if self.me.last_name else "")
         self.username = self.me.username
         self.mention = self.me.mention
 
-        # ----- Normalize LOGGER_ID (handle missing -100) -----
-        logger_id = getattr(config, "LOGGER_ID", None)
-        if logger_id is None:
+        # ---------- NORMALIZE LOGGER_ID ----------
+        logger_id_raw = getattr(config, "LOGGER_ID", None)
+        if logger_id_raw is None:
             LOGGER(__name__).error("❌ LOGGER_ID is not set in config.")
             exit(1)
 
-        # Convert to int if it's a string
-        if isinstance(logger_id, str):
-            try:
-                logger_id = int(logger_id)
-            except ValueError:
-                LOGGER(__name__).error("❌ LOGGER_ID must be an integer.")
-                exit(1)
-
-        # Store normalized ID
-        self.logger_id = await self._normalize_chat_id(logger_id)
-        if self.logger_id is None:
-            LOGGER(__name__).error("❌ Failed to resolve LOGGER_ID. Please check the ID.")
+        # Convert to int if string
+        try:
+            logger_id_raw = int(logger_id_raw)
+        except (ValueError, TypeError):
+            LOGGER(__name__).error(f"❌ LOGGER_ID must be an integer, got {logger_id_raw}")
             exit(1)
 
-        # ----- Send startup message (with retry on FloodWait) -----
+        # Try to resolve the correct chat ID
+        resolved_id = await self._resolve_chat_id(logger_id_raw)
+        if resolved_id is None:
+            LOGGER(__name__).error(
+                f"❌ Could not resolve LOGGER_ID: {logger_id_raw}. "
+                "Make sure the bot is added to the group/channel and the ID is correct."
+            )
+            exit(1)
+
+        self.logger_id = resolved_id
+        LOGGER(__name__).info(f"✅ Log channel resolved to: {self.logger_id}")
+
+        # ---------- SEND STARTUP MESSAGE (WITH RETRY) ----------
         while True:
             try:
                 await self.send_message(
@@ -81,7 +86,8 @@ class Ashish(Client):
                         f"ᴜsᴇʀɴᴀᴍᴇ : @{self.username}"
                     ),
                 )
-                break  # success
+                LOGGER(__name__).info("✅ Startup message sent successfully.")
+                break
             except errors.FloodWait as e:
                 wait_time = e.value
                 LOGGER(__name__).warning(
@@ -91,13 +97,13 @@ class Ashish(Client):
             except (errors.ChannelInvalid, errors.PeerIdInvalid) as ex:
                 LOGGER(__name__).error(
                     "❌ Bot cannot access the log group/channel. "
-                    "Make sure the bot is added to the group and has send permissions."
+                    "Ensure the bot is added and has permission to send messages."
                 )
                 exit(1)
             except ValueError as ex:
-                # This may happen if ID is still invalid (shouldn't after normalization, but just in case)
+                # This should not happen after resolution, but just in case
                 LOGGER(__name__).error(
-                    f"❌ Invalid chat ID: {self.logger_id}. Ensure it's a valid supergroup ID (negative with -100 prefix)."
+                    f"❌ Invalid chat ID after resolution: {self.logger_id} - {ex}"
                 )
                 exit(1)
             except Exception as ex:
@@ -106,7 +112,7 @@ class Ashish(Client):
                 )
                 exit(1)
 
-        # ----- Check admin status in log channel -----
+        # ---------- CHECK ADMIN STATUS ----------
         try:
             member = await self.get_chat_member(self.logger_id, self.id)
             if member.status != ChatMemberStatus.ADMINISTRATOR:
@@ -114,6 +120,7 @@ class Ashish(Client):
                     "❌ Bot is not an admin in the log group/channel. Please promote it."
                 )
                 exit(1)
+            LOGGER(__name__).info("✅ Bot is admin in log channel.")
         except Exception as ex:
             LOGGER(__name__).error(
                 f"❌ Failed to check admin status: {type(ex).__name__} - {ex}"
@@ -126,36 +133,35 @@ class Ashish(Client):
         LOGGER(__name__).info("Stopping Bot...")
         await super().stop()
 
-    # ----- Helper to normalize chat ID (handle missing -100) -----
-    async def _normalize_chat_id(self, chat_id: int):
+    # ---------- HELPER TO RESOLVE CHAT ID ----------
+    async def _resolve_chat_id(self, chat_id: int):
         """
-        Tries to resolve the chat ID. If the provided ID is positive and fails
-        with ValueError, it attempts to use the negative version (for supergroups).
-        Returns the working ID or None if all attempts fail.
+        Tries to validate the chat ID. If the ID is positive and fails,
+        it automatically tries the negative version (for supergroups).
+        Returns the working ID or None if both fail.
         """
-        # First, try the ID as-is (works for users, groups, and supergroups with -100)
+        # First, try the ID as given
         try:
-            # A simple test: get chat info to see if it's valid
             await self.get_chat(chat_id)
-            return chat_id
+            return chat_id  # valid
         except ValueError:
-            # If ValueError occurs, it might be a supergroup missing -100
+            # If ValueError (invalid peer), try negative variant for supergroups
             if chat_id > 0:
-                negative_id = -chat_id  # This will be -100... for supergroups
+                negative_id = -chat_id
                 LOGGER(__name__).info(
-                    f"🔁 Positive ID {chat_id} failed. Trying negative version: {negative_id}"
+                    f"🔁 Positive ID {chat_id} failed. Trying negative: {negative_id}"
                 )
                 try:
                     await self.get_chat(negative_id)
                     return negative_id
                 except Exception:
                     pass  # fall through
-            # If still fails, try adding -100 explicitly (though -chat_id is the same for numbers > 0)
-            # Actually, for a supergroup ID like 1002111675614, -1002111675614 is correct.
-            # If that fails, it's truly invalid.
-            LOGGER(__name__).error(f"❌ Invalid chat ID: {chat_id} (and negative variant also failed).")
+            # If we reach here, both failed
+            LOGGER(__name__).error(f"❌ Both {chat_id} and negative variant are invalid.")
             return None
         except Exception as e:
-            # Some other error (e.g., permission denied) - we'll consider it invalid
-            LOGGER(__name__).error(f"❌ Chat ID {chat_id} is not accessible: {type(e).__name__} - {e}")
+            # Some other error (permission, network, etc.)
+            LOGGER(__name__).error(
+                f"❌ Error accessing chat {chat_id}: {type(e).__name__} - {e}"
+            )
             return None
