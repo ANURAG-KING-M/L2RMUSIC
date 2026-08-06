@@ -15,7 +15,7 @@ class Ashish(Client):
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             bot_token=config.BOT_TOKEN,
-            in_memory=True,
+            in_memory=False,
             parse_mode=ParseMode.HTML,
             max_concurrent_transmissions=7,
         )
@@ -51,77 +51,37 @@ class Ashish(Client):
         self.username = self.me.username
         self.mention = self.me.mention
 
-        # ========== LOGGER_ID handling ==========
+        # ========== LOGGER_ID Handling ==========
+        LOGGER_ID = None
         try:
             logger_id_raw = getattr(config, "LOGGER_ID", None)
             if logger_id_raw is None:
                 logger_id_raw = os.environ.get("LOGGER_ID")
-                if logger_id_raw is None:
-                    raise ValueError("LOGGER_ID not set in config or env.")
             
-            if isinstance(logger_id_raw, str):
-                logger_id_raw = logger_id_raw.strip().strip('"').strip("'")
-            
-            LOGGER_ID = int(logger_id_raw)
-            LOGGER(__name__).info(f"Using LOGGER_ID: {LOGGER_ID}")
-        except (ValueError, TypeError) as e:
-            LOGGER(__name__).error(
-                f"❌ Invalid LOGGER_ID format: {logger_id_raw!r}. "
-                "Please set a valid integer (e.g., -1001234567890) in config.py or env."
-            )
-            exit(1)
-
-        # ========== 🛠️ Force Peer Resolution & Connection fix ==========
-        try:
-            # Step 1: Resolve peer directly using Pyrogram's internal storage/resolve methods
-            try:
-                await self.resolve_peer(LOGGER_ID)
-            except Exception:
-                pass
-
-            # Step 2: Fetch chat info to force cache update
-            chat = await self.get_chat(LOGGER_ID)
-            LOGGER(__name__).info(f"✅ Log channel/group resolved successfully: {chat.title or chat.id}")
-            
-        except errors.PeerIdInvalid:
-            LOGGER(__name__).error(
-                f"❌ Peer id invalid: {LOGGER_ID}.\n"
-                "   -> Solution: Bot ya Assistant us group mein added nahi hai, ya ID galat hai.\n"
-                "   -> Make sure bot is added as admin in that exact group."
-            )
-            exit(1)
+            if logger_id_raw:
+                if isinstance(logger_id_raw, str):
+                    logger_id_raw = logger_id_raw.strip().strip('"').strip("'")
+                LOGGER_ID = int(logger_id_raw)
+                LOGGER(__name__).info(f"Using LOGGER_ID: {LOGGER_ID}")
         except Exception as e:
-            LOGGER(__name__).error(
-                f"❌ Failed to access log group/channel: {type(e).__name__} - {e}\n"
-                "   Make sure the ID is correct and the bot is added."
-            )
+            LOGGER(__name__).error(f"❌ Invalid LOGGER_ID format: {e}")
             exit(1)
 
-        # ========== Send startup message ==========
-        try:
-            await self.send_message(
-                chat_id=LOGGER_ID,
-                text=f"<u><b>» {self.mention} ʙᴏᴛ sᴛᴀʀᴛᴇᴅ :</b><u>\n\nɪᴅ : <code>{self.id}</code>\nɴᴀᴍᴇ : {self.name}\nᴜsᴇʀɴᴀᴍᴇ : @{self.username}",
-            )
-        except Exception as ex:
-            LOGGER(__name__).error(
-                f"❌ Failed to send startup message to log group/channel.\n  Reason: {type(ex).__name__} - {ex}."
-            )
-            exit(1)
-
-        # ========== Check admin status ==========
-        try:
-            a = await self.get_chat_member(LOGGER_ID, self.id)
-            if a.status != ChatMemberStatus.ADMINISTRATOR:
-                LOGGER(__name__).error(
-                    "❌ Bot is not an admin in the log group/channel. Please promote it."
+        # ========== 🛠️ PERMANENT FIX FOR PEER ID INVALID ERROR ==========
+        # Yahan humne saari aisi checking hata di hai jo PeerIdInvalid error de rahi thi.
+        # Ab bot seedha log group mein message bhejega. Agar group invalid bhi hua toh bot crash nahi hoga.
+        if LOGGER_ID:
+            try:
+                await self.send_message(
+                    chat_id=LOGGER_ID,
+                    text=f"<u><b>» {self.mention} ʙᴏᴛ sᴛᴀʀᴛᴇᴅ :</b><u>\n\nɪᴅ : <code>{self.id}</code>\nɴᴀᴍᴇ : {self.name}\nᴜsᴇʀɴᴀᴍᴇ : @{self.username}",
                 )
-                exit(1)
-        except Exception as ex:
-            LOGGER(__name__).error(
-                f"❌ Failed to check bot's admin status.\n  Reason: {type(ex).__name__} - {ex}."
-            )
-            exit(1)
+                LOGGER(__name__).info("✅ Log group connected & startup message sent successfully.")
+            except Exception as ex:
+                LOGGER(__name__).warning(
+                    f"⚠️ Could not send message to LOGGER_ID ({LOGGER_ID}): {type(ex).__name__} - {ex}\n"
+                    "   (Bot started successfully, but check if the group ID is correct and bot is admin)"
+                )
 
         # ========== Cache channel resolution (optional) ==========
         try:
