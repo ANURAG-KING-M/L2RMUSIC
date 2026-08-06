@@ -51,17 +51,14 @@ class Ashish(Client):
         self.username = self.me.username
         self.mention = self.me.mention
 
-        # ========== 🆕 FIX: Robust LOGGER_ID handling ==========
+        # ========== LOGGER_ID handling ==========
         try:
-            # Clean the ID: remove spaces, newlines, and convert to int
             logger_id_raw = getattr(config, "LOGGER_ID", None)
             if logger_id_raw is None:
-                # fallback to env
                 logger_id_raw = os.environ.get("LOGGER_ID")
                 if logger_id_raw is None:
                     raise ValueError("LOGGER_ID not set in config or env.")
             
-            # If it's a string, strip whitespace and quotes
             if isinstance(logger_id_raw, str):
                 logger_id_raw = logger_id_raw.strip().strip('"').strip("'")
             
@@ -74,15 +71,23 @@ class Ashish(Client):
             )
             exit(1)
 
-        # ========== 🆕 FIX: Verify chat accessibility before sending message ==========
+        # ========== 🛠️ Force Peer Resolution & Connection fix ==========
         try:
-            # Try to fetch chat info – this will raise PeerIdInvalid if bot is not a member
+            # Step 1: Resolve peer directly using Pyrogram's internal storage/resolve methods
+            try:
+                await self.resolve_peer(LOGGER_ID)
+            except Exception:
+                pass
+
+            # Step 2: Fetch chat info to force cache update
             chat = await self.get_chat(LOGGER_ID)
-            LOGGER(__name__).info(f"✅ Log channel/group resolved: {chat.title or chat.id}")
+            LOGGER(__name__).info(f"✅ Log channel/group resolved successfully: {chat.title or chat.id}")
+            
         except errors.PeerIdInvalid:
             LOGGER(__name__).error(
-                f"❌ Bot is not a member of the log group/channel with ID {LOGGER_ID}.\n"
-                "   Please add the bot to that group/channel and promote it as admin."
+                f"❌ Peer id invalid: {LOGGER_ID}.\n"
+                "   -> Solution: Bot ya Assistant us group mein added nahi hai, ya ID galat hai.\n"
+                "   -> Make sure bot is added as admin in that exact group."
             )
             exit(1)
         except Exception as e:
