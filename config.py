@@ -25,7 +25,7 @@ DURATION_LIMIT_MIN = int(getenv("DURATION_LIMIT", "5400"))
 SONG_DOWNLOAD_DURATION = int(getenv("SONG_DOWNLOAD_DURATION_LIMIT", "5400"))
 
 # Chat ID of a group for logging bot's activities
-LOGGER_ID = int(os.environ.get("LOGGER_ID", -1002742683802))
+LOGGER_ID = int(os.environ.get("LOGGER_ID", -1002111675614))
 
 # ━━━━━━━━━━━━━❖ ➥ 𝐿2𝙍 𝗠𝗨𝗦𝗜𝗖™🇮🇳 ━━━━━━━━━━━
 OWNER_ID = int(getenv("OWNER_ID", "5820831398"))
