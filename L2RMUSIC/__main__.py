@@ -40,10 +40,20 @@ async def init():
 
     except Exception as e:
         LOGGER(__name__).error(f"Error loading banned users: {str(e)}")
-        pass  # Optionally, you can handle this error or log it
+        pass
 
     # Start the app and userbot
     await app.start()
+
+    # 🛠️ FIX: Fetch log group peer to prevent Peer id invalid error
+    try:
+        await app.get_chat(config.LOGGER_ID)
+    except Exception as e:
+        LOGGER(__name__).error(
+            f"❌ Failed to access log group/channel ({config.LOGGER_ID}): {e}\n"
+            "Make sure the ID is correct, the bot is added, and it has proper permissions."
+        )
+        exit()
 
     # Dynamically load all modules
     for all_module in ALL_MODULES:
@@ -65,9 +75,9 @@ async def init():
         exit()
     except Exception as e:
         LOGGER("L2RMUSIC").error(f"Error during stream_call: {str(e)}")
-        pass  # Handle streaming errors if needed
+        pass
 
-    # Start decorators for Ashish (probably for event handlers)
+    # Start decorators for Ashish (for event handlers)
     await Ashish.decorators()
 
     LOGGER("L2RMUSIC").info("╔═════ஜ۩۞۩ஜ════╗\n  ༄𝐿 2 𝙍.🖤🜲𝐾𝐼𝐍𝐺❦︎ 𝆺𝅥⃝🍷\n╚═════ஜ۩۞۩ஜ════╝")
