@@ -6,8 +6,12 @@ import requests
 ### ❖ ➥ 𝗕𝐖𝗙™🇮🇳
 
 def upload_file(file_path):
-    url = "https://catbox.moe/user/api.php"
-    data = {"reqtype": "fileupload"}
+    # Litterbox API (Catbox ka hi official alternative hai jisme yeh error nahi aata)
+    url = "https://litterbox.catbox.moe/resources/api.php"
+    data = {
+        "reqtype": "fileupload",
+        "time": "72h"  # File 72 ghante tak rahegi (Options: 1h, 12h, 24h, 72h)
+    }
     try:
         with open(file_path, "rb") as f:
             files = {"fileToUpload": f}
@@ -25,7 +29,7 @@ def upload_file(file_path):
 async def get_link_group(client, message):
     if not message.reply_to_message:
         return await message.reply_text(
-            "Pʟᴇᴀsᴇ ʀᴇᴘʟʏ ᴛᴏ ᴀ ᴍᴇᴅɪᴀ ᴛᴏ ᴜᴘʟᴏᴀᴅ ᴏɴ Cᴀᴛʙᴏx"
+            "Pʟᴇᴀsᴇ rᴇᴘʟʏ ᴛᴏ ᴀ ᴍᴇᴅɪᴀ ᴛᴏ ᴜᴘʟᴏᴀᴅ"
         )
 
     media = message.reply_to_message
@@ -40,7 +44,7 @@ async def get_link_group(client, message):
         file_size = media.document.file_size
 
     if file_size > 200 * 1024 * 1024:
-        return await message.reply_text("Pʟᴇᴀsᴇ ᴘʀᴏᴠɪᴅᴇ ᴀ ᴍᴇᴅɪᴀ ғɪʟᴇ ᴜɴᴅᴇʀ 200MB.")
+        return await message.reply_text("Pʟᴇᴀsᴇ pʀᴏᴠɪᴅᴇ ᴀ ᴍᴇᴅɪᴀ ғɪʟᴇ uɴᴅᴇʀ 200MB.")
 
     text = await message.reply("Pʀᴏᴄᴇssɪɴɢ...")
     local_path = None
@@ -73,11 +77,11 @@ async def get_link_group(client, message):
             )
         else:
             await text.edit_text(
-                f"ᴀɴ ᴇʀʀᴏʀ ᴏᴄᴄᴜʀʀᴇᴅ ᴡʜɪʟᴇ ᴜᴘʟOᴀᴅɪɴɢ ʏᴏᴜʀ ғɪʟᴇ\n{upload_path}"
+                f"ᴀɴ eʀʀᴏʀ oᴄᴄᴜʀʀᴇᴅ wʜɪʟᴇ uᴘʟᴏᴀᴅɪɴɢ ʏᴏᴜʀ fɪʟᴇ\n{upload_path}"
             )
 
     except Exception as e:
-        await text.edit_text(f"❌ Fɪʟᴇ ᴜᴘʟᴏᴀᴅ ғᴀɪʟᴇᴅ\n\n<i>Rᴇᴀsᴏ𝒏: {e}</i>")
+        await text.edit_text(f"❌ Fɪʟᴇ uᴘʟᴏᴀᴅ fᴀɪʟᴇᴅ\n\n<i>Rᴇᴀsᴏɴ: {e}</i>")
     
     finally:
         if local_path and os.path.exists(local_path):
