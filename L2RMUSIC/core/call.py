@@ -91,8 +91,7 @@ class Call:
         )
         self.five = PyTgCalls(self.userbot5, cache_duration=100)
 
-        # Register all event handlers
-        self.decorators()
+        # Event handlers are registered when decorators() is called
 
     async def pause_stream(self, chat_id: int):
         assistant = await group_assistant(self, chat_id)
@@ -111,7 +110,6 @@ class Call:
             pass
 
     async def stop_stream_force(self, chat_id: int):
-        # Try to leave with all assistants
         for assistant in [self.one, self.two, self.three, self.four, self.five]:
             try:
                 await assistant.leave_group_call(chat_id)
@@ -130,7 +128,6 @@ class Call:
             os.makedirs(chatdir, exist_ok=True)
             out = os.path.join(chatdir, base)
             if not os.path.isfile(out):
-                # Map speed to video speed factor
                 speed_map = {"0.5": 2.0, "0.75": 1.35, "1.5": 0.68, "2.0": 0.5}
                 vs = speed_map.get(str(speed), 1.0)
                 proc = await asyncio.create_subprocess_shell(
@@ -146,15 +143,13 @@ class Call:
                 await proc.communicate()
                 if proc.returncode != 0:
                     raise AssistantErr("FFmpeg processing failed")
-            else:
-                pass
         else:
             out = file_path
 
         dur = await asyncio.get_event_loop().run_in_executor(None, check_duration, out)
         dur = int(dur)
         played, con_seconds = speed_converter(playing[0]["played"], speed)
-        duration = seconds_to_min(dur)  # returns "mm:ss"
+        duration = seconds_to_min(dur)
 
         if playing[0]["streamtype"] == "video":
             stream = AudioVideoPiped(
@@ -175,7 +170,6 @@ class Call:
         else:
             raise AssistantErr("Track mismatch")
 
-        # Update database
         db[chat_id][0]["played"] = con_seconds
         db[chat_id][0]["dur"] = duration
         db[chat_id][0]["seconds"] = dur
@@ -329,7 +323,6 @@ class Call:
         streamtype = check[0]["streamtype"]
         videoid = check[0]["vidid"]
 
-        # Reset played time and speed if old_dur exists (from speed change)
         exis = check[0].get("old_dur")
         if exis:
             check[0]["dur"] = exis
@@ -426,7 +419,6 @@ class Call:
             check[0]["markup"] = "tg"
 
         else:
-            # Direct file path or URL
             stream = (AudioVideoPiped(queued, audio_parameters=HighQualityAudio(),
                                       video_parameters=MediumQualityVideo())
                       if video else AudioPiped(queued, audio_parameters=HighQualityAudio()))
@@ -504,8 +496,8 @@ class Call:
         if config.STRING5:
             await self.five.start()
 
-    def decorators(self):
-        # Define shared event handlers
+    async def decorators(self):
+        """Register all event handlers (must be awaited)."""
         @self.one.on_kicked()
         @self.two.on_kicked()
         @self.three.on_kicked()
