@@ -1,21 +1,20 @@
 import os
+import requests
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from L2RMUSIC import app
-import requests
 ### ❖ ➥ 𝗕𝐖𝗙™🇮🇳
 
 def upload_file(file_path):
-    # Litterbox API (Catbox ka hi official alternative hai jisme yeh error nahi aata)
-    url = "https://litterbox.catbox.moe/resources/api.php"
-    data = {
-        "reqtype": "fileupload",
-        "time": "72h"  # File 72 ghante tak rahegi (Options: 1h, 12h, 24h, 72h)
-    }
+    url = "https://envs.sh"
     try:
         with open(file_path, "rb") as f:
-            files = {"fileToUpload": f}
-            response = requests.post(url, data=data, files=files)
+            files = {"file": f}
+            # Custom User-Agent taaki server automated script na samjhe
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+            }
+            response = requests.post(url, files=files, headers=headers)
 
         if response.status_code == 200:
             return True, response.text.strip()
