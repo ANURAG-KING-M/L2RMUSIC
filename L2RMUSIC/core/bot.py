@@ -1,104 +1,55 @@
-import asyncio
-import os
-from pyrogram import Client, errors
-from pyrogram.enums import ChatMemberStatus, ParseMode
-
-import config
-from ..logging import LOGGER
+# Copyright (c) 2025 TheHamkerAlone 
+# Licensed under the MIT License.
+# This file is part of AloneXMusic
 
 
-class Ashish(Client):
+import pyrogram
+
+from L2RMUSIC import config, logger
+
+
+class Bot(pyrogram.Client):
     def __init__(self):
-        LOGGER(__name__).info("Starting Bot...")
         super().__init__(
-            name="L2RMUSIC",
+            name=L2RMUSIC",
             api_id=config.API_ID,
             api_hash=config.API_HASH,
             bot_token=config.BOT_TOKEN,
-            in_memory=False,
-            parse_mode=ParseMode.HTML,
+            parse_mode=pyrogram.enums.ParseMode.HTML,
             max_concurrent_transmissions=7,
+            link_preview_options=pyrogram.types.LinkPreviewOptions(is_disabled=True),
         )
+        self.owner = config.OWNER_ID
+        self.logger = config.LOGGER_ID
+        self.bl_users = pyrogram.filters.user()
+        self.sudoers = pyrogram.filters.user(self.owner)
 
-    async def start(self):
-        LOGGER(__name__).info("Attempting to connect to Telegram...")
-        
-        # Connect with retry on FloodWait
-        while True:
-            try:
-                await super().start()
-                break
-            except errors.FloodWait as e:
-                wait_time = e.value
-                LOGGER(__name__).warning(
-                    f"⚠️ Telegram FloodWait during login. Waiting for {wait_time} seconds before retrying..."
-                )
-                await asyncio.sleep(wait_time)
-            except (ValueError, errors.AuthKeyUnregistered, errors.BotMethodInvalid, errors.BadRequest) as ex:
-                LOGGER(__name__).error(
-                    f"❌ Fatal Login Error! Please check your BOT_TOKEN, API_ID, and API_HASH.\n  Reason: {type(ex).__name__} - {ex}"
-                )
-                exit(1)
-            except Exception as ex:
-                LOGGER(__name__).error(
-                    f"Bot failed to start due to an unexpected error: {type(ex).__name__} - {ex}"
-                )
-                exit(1)
-        
-        # Set bot identity
+    async def boot(self):
+        """
+        Starts the bot and performs initial setup.
+
+        Raises:
+            SystemExit: If the bot fails to access the log group or is not an administrator in the logger group.
+        """
+        await super().start()
         self.id = self.me.id
-        self.name = self.me.first_name + " " + (self.me.last_name or "")
+        self.name = self.me.first_name
         self.username = self.me.username
         self.mention = self.me.mention
 
-        # ========== LOGGER_ID Handling ==========
-        LOGGER_ID = None
         try:
-            logger_id_raw = getattr(config, "LOGGER_ID", None)
-            if logger_id_raw is None:
-                logger_id_raw = os.environ.get("LOGGER_ID")
-            
-            if logger_id_raw:
-                if isinstance(logger_id_raw, str):
-                    logger_id_raw = logger_id_raw.strip().strip('"').strip("'")
-                LOGGER_ID = int(logger_id_raw)
-                LOGGER(__name__).info(f"Using LOGGER_ID: {LOGGER_ID}")
-        except Exception as e:
-            LOGGER(__name__).error(f"❌ Invalid LOGGER_ID format: {e}")
-            exit(1)
+            await self.send_message(self.logger, "Bot Started")
+            get = await self.get_chat_member(self.logger, self.id)
+        except Exception as ex:
+            raise SystemExit(f"Bot has failed to access the log group: {self.logger}\nReason: {ex}")
 
-        # ========== 🛠️ PERMANENT FIX FOR PEER ID INVALID ERROR ==========
-        # Yahan humne saari aisi checking hata di hai jo PeerIdInvalid error de rahi thi.
-        # Ab bot seedha log group mein message bhejega. Agar group invalid bhi hua toh bot crash nahi hoga.
-        if LOGGER_ID:
-            try:
-                await self.send_message(
-                    chat_id=LOGGER_ID,
-                    text=f"<u><b>» {self.mention} ʙᴏᴛ sᴛᴀʀᴛᴇᴅ :</b><u>\n\nɪᴅ : <code>{self.id}</code>\nɴᴀᴍᴇ : {self.name}\nᴜsᴇʀɴᴀᴍᴇ : @{self.username}",
-                )
-                LOGGER(__name__).info("✅ Log group connected & startup message sent successfully.")
-            except Exception as ex:
-                LOGGER(__name__).warning(
-                    f"⚠️ Could not send message to LOGGER_ID ({LOGGER_ID}): {type(ex).__name__} - {ex}\n"
-                    "   (Bot started successfully, but check if the group ID is correct and bot is admin)"
-                )
+        if get.status != pyrogram.enums.ChatMemberStatus.ADMINISTRATOR:
+            raise SystemExit("Please promote the bot as an admin in logger group.")
+        logger.info(f"Bot started as @{self.username}")
 
-        # ========== Cache channel resolution (optional) ==========
-        try:
-            if hasattr(config, 'CACHE_CHANNEL_ID'):
-                cache_chat_id = int(config.CACHE_CHANNEL_ID)
-            else:
-                cache_chat_id = int(os.environ.get("CACHE_CHANNEL_ID", 0))
-                if cache_chat_id == 0:
-                    raise ValueError("CACHE_CHANNEL_ID not set")
-
-            await self.get_chat(cache_chat_id)
-            LOGGER(__name__).info(f"✅ Cache channel resolved: {cache_chat_id}")
-        except Exception as e:
-            LOGGER(__name__).warning(f"⚠️ Cache channel issue (non-critical): {e}")
-
-        LOGGER(__name__).info(f"🎵 Music Bot Started as {self.name}")
-
-    async def stop(self):
-        LOGGER(__name__).info("Stopping Bot...")
+    async def exit(self):
+        """
+        Asynchronously stops the bot.
+        """
         await super().stop()
+        logger.info("Bot stopped.")
