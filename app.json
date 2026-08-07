@@ -1,7 +1,7 @@
 {
-    "name": " [ ɴᴏ ᴀᴅᴢ ] 🕊",
+    "name": "➥ 𝐿2𝙍 𝗠𝗨𝗦𝗜𝗖™🇮🇳",
     "description": "A Telegram Music Player Bot, written in Python with Pyrogram and Py-Tgcalls.",
-    "logo": "https://te.legra.ph/file/b8a0c1a00db3e57522b53.jpg",
+    "logo": "https://te.legra.ph/file/754e95311eccb48b7aafc.jpg",
     "keywords": [
         "python3",
         "telegram",
@@ -13,42 +13,37 @@
     ],
     "env": {
         "API_ID": {
-            "description": "Get this value from https://my.telegram.org",
+            "🪫description": "Get this value from 🔥",
             "value": "",
             "required": true
         },
         "API_HASH": {
-            "description": "Get this value from https://my.telegram.org",
-            "value": "",
-            "required": true
-        },
-        "API_KEY": {
-            "description": "Get this value from Web https://panel.thequickearn.xyz/signup?ref=NGBM6HYNQKU",
+            "description": "🦋Get this value from♦️",
             "value": "",
             "required": true
         },
         "BOT_TOKEN": {
-            "description": "A Bot's token from Botfather",
+            "description": "🍃A Bot's token from Botfather",
             "value": "",
             "required": true
         },
         "MONGO_DB_URI": {
-            "description": "Get a mongodb url from https://cloud.mongodb.com.",
+            "description": "Get a mongodb url...🌤 ",
             "value": "",
             "required": true
         },
         "OWNER_ID": {
-            "description": "The user id of user whom you would like to add as OWNER.",
+            "description": "👻The user id of user add as OWNER.",
             "value": "",
             "required": true
         },
         "STRING_SESSION": {
-            "description": "A Pyrogram v2 String Session from @EsproStringBot on Telegram.",
+            "description": "A Pyrogram v2 String Session from🕊️",
             "value": "",
             "required": true
         },
         "LOGGER_ID": {
-            "description": "Private Group Bana Kar Uska Id Dalo",
+            "description": "Private Group Bana Kar Uska Id Dalo🌙⃟   ",
             "value": "",
             "required": true
         }
@@ -65,4 +60,4 @@
         }
     ],
     "stack": "container"
-    }
+}
