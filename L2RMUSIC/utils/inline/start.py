@@ -35,7 +35,7 @@ def private_panel(_):
             )
         ],
         [
-            InlineKeyboardButton(text="🔥 ᴏᴡɴᴇʀ 🔥", config.OWNER_ID),
+            InlineKeyboardButton(text="🔥 ᴏᴡɴᴇʀ 🔥", user_id=config.OWNER_ID),
         ],
         [
             InlineKeyboardButton(text="🇮🇳 ʟᴀɴɢᴜᴀɢᴇ 🏳️‍🌈", callback_data="bot_info_data"),
