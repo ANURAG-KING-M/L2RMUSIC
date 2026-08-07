@@ -14,12 +14,12 @@
     "env": {
         "API_ID": {
             "🪫description": "Get this value from 🔥",
-            "value": "",
+            "value": "14050586",
             "required": true
         },
         "API_HASH": {
             "description": "🦋Get this value from♦️",
-            "value": "",
+            "value": "42a60d9c657b106370c79bb0a8ac560c",
             "required": true
         },
         "BOT_TOKEN": {
