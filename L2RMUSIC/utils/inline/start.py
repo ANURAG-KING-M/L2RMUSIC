@@ -30,12 +30,12 @@ def private_panel(_):
         ],
         [
             InlineKeyboardButton(
-                text="⛩️ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜᴘ ⛩️",
+                text="⛩️ ᴀᴅᴅ ᴍᴇ ᴛᴏ ʏᴏᴜʀ ɢʀᴏᴜ𝚙 ⛩️",
                 url=f"https://t.me/{app.username}?startgroup=true"
             )
         ],
         [
-            InlineKeyboardButton(text="🔥 ᴏᴡɴᴇʀ 🔥", user_id=config.OWNER_ID),
+            InlineKeyboardButton(text="🔥 ᴏᴡɴᴇʀ 🔥", url=f"https://t.me/L2R_KING"),
         ],
         [
             InlineKeyboardButton(text="🇮🇳 ʟᴀɴɢᴜᴀɢᴇ 🏳️‍🌈", callback_data="bot_info_data"),
