@@ -1,11 +1,11 @@
-From pyrogram.types import InlineKeyboardButton
+from pyrogram.types import InlineKeyboardButton
 
-Import config
+import config
 from L2RMUSIC import app
 
 
-Def start_panel(_):
-    Buttons = [
+def start_panel(_):
+    buttons = [
         [
             InlineKeyboardButton(
                 text=_["S_B_1"], url=f"https://t.me/{app.username}?startgroup=true"
@@ -13,11 +13,11 @@ Def start_panel(_):
             InlineKeyboardButton(text=_["S_B_2"], url=config.SUPPORT_CHAT),
         ],
     ]
-    Return buttons
+    return buttons
 
 
-Def private_panel(_):
-    Buttons = [
+def private_panel(_):
+    buttons = [
         [
             InlineKeyboardButton(
                 text="🔎 ʜᴇʟᴩ 🔎",
@@ -41,4 +41,4 @@ Def private_panel(_):
             InlineKeyboardButton(text="🇮🇳 ʟᴀɴɢᴜᴀɢᴇ 🏳️‍🌈", callback_data="bot_info_data"),
         ],
     ]
-    Return buttons
+    return buttons
