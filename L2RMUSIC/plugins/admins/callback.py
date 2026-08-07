@@ -3,6 +3,7 @@ import asyncio
 from pyrogram import filters
 from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 
+import config
 from L2RMUSIC import YouTube, app
 from L2RMUSIC.core.call import Ashish
 from L2RMUSIC.misc import SUDOERS, db
@@ -87,9 +88,9 @@ async def del_back_playlist(client, CallbackQuery, _):
                 return await CallbackQuery.edit_message_text(f"ғᴀɪʟᴇᴅ.")
             try:
                 if current["vidid"] != exists["vidid"]:
-                    return await CallbackQuery.edit_message.text(_["admin_35"])
+                    return await CallbackQuery.edit_message_text(_["admin_35"])
                 if current["file"] != exists["file"]:
-                    return await CallbackQuery.edit_message.text(_["admin_35"])
+                    return await CallbackQuery.edit_message_text(_["admin_35"])
             except:
                 return await CallbackQuery.edit_message_text(_["admin_36"])
             try:
@@ -111,7 +112,7 @@ async def del_back_playlist(client, CallbackQuery, _):
                     [
                         InlineKeyboardButton(
                             text=f"👍 {get_upvotes}",
-                            callback_data=f"ADMIN  UpVote|{chat_id}_{counter}",
+                            callback_data=f"ADMIN UpVote|{chat_id}_{counter}",
                         )
                     ]
                 ]
@@ -312,7 +313,10 @@ async def del_back_playlist(client, CallbackQuery, _):
                     if str(streamtype) == "audio"
                     else TELEGRAM_VIDEO_URL,
                     caption=_["stream_1"].format(
-                        config.SUPPORT_CHAT, title[:23], duration, user
+                        getattr(config, "SUPPORT_CHAT", f"https://t.me/{app.username}"), 
+                        title[:23], 
+                        duration, 
+                        user
                     ),
                     reply_markup=InlineKeyboardMarkup(button),
                 )
@@ -325,7 +329,10 @@ async def del_back_playlist(client, CallbackQuery, _):
                     if str(streamtype) == "audio"
                     else TELEGRAM_VIDEO_URL,
                     caption=_["stream_1"].format(
-                        config.SUPPORT_CHAT, title[:23], duration, user
+                        getattr(config, "SUPPORT_CHAT", f"https://t.me/{app.username}"), 
+                        title[:23], 
+                        duration, 
+                        user
                     ),
                     reply_markup=InlineKeyboardMarkup(button),
                 )
@@ -352,6 +359,8 @@ async def del_back_playlist(client, CallbackQuery, _):
 async def markup_timer():
     while not await asyncio.sleep(7):
         active_chats = await get_active_chats()
+        if not active_chats:
+            continue
         for chat_id in active_chats:
             try:
                 if not await is_music_playing(chat_id):
