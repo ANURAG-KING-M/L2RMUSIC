@@ -14,12 +14,12 @@ API_HASH = getenv("API_HASH", "7cb236b197b25c243fa83e7e0173d0e6")
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 2. Bot Token (from @BotFather) 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-BOT_TOKEN = getenv("BOT_TOKEN", "")
+BOT_TOKEN = getenv("BOT_TOKEN", "6371758660:AAGQ7KpJsfcfvxguSNT-_a9m-EuV1m-PXhY")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 3. MongoDB (from cloud.mongodb.com)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MONGO_DB_URI = getenv("MONGO_DB_URI", "")
+MONGO_DB_URI = getenv("MONGO_DB_URI", "mongodb+srv://L2RKING:BWF_MUSIC1@l2rking.1ikcd.mongodb.net/?retryWrites=true&w=majority")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 4. Duration Limits (in minutes)
@@ -30,7 +30,7 @@ SONG_DOWNLOAD_DURATION = int(getenv("SONG_DOWNLOAD_DURATION_LIMIT", "5400"))
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 5. Logger Group / Channel (where bot sends startup log)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LOGGER_ID = int(os.environ.get("LOGGER_ID", -1002742683802))
+LOGGER_ID = int(os.environ.get("LOGGER_ID", -1002111675614))
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 6. Owner ID (your Telegram user ID)
@@ -93,7 +93,7 @@ TG_VIDEO_FILESIZE_LIMIT = int(getenv("TG_VIDEO_FILESIZE_LIMIT", "1073741824"))
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 15. Assistant Sessions (multiple userbots)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STRING1 = getenv("STRING_SESSION", "")
+STRING1 = getenv("STRING_SESSION", "BQDWZRoAX7EbQuKeyTghOE_3C9Ot-H0koHgrXOOqDF4lP166r3JjkCacClIbSoKjT5jSYFUKpDkm6hxnVHS-7ADjBCqWdn9VsI0R8OUabsjQD7bgNnvTHO-uPoGfjUzNCpyZFF7-vjA4m0cqb79yzoZmRSuj62bls6egCffjxm99SwbDj1CDJeOzrDZ78MpAU93Dj1ciphLJtiZH1u9_wXLylKKTI90lC74x3o0z8yUvzn8jIIT3TXBnRNQFk03G62UAo4Z87gHcixlVXtMvv6WW0uS_We7Iu6hEFtpYVZJS3M1GTM-zr-jjaPS6VuQkLqPlLZAzS6kRteCmkOYIdJjFlJn1lQAAAAFUrySxAA")
 STRING2 = getenv("STRING_SESSION2", "")
 STRING3 = getenv("STRING_SESSION3", "")
 STRING4 = getenv("STRING_SESSION4", "")
