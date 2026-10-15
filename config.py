@@ -8,18 +8,18 @@ load_dotenv()
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 1. Telegram API (from my.telegram.org/apps)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-API_ID = int(getenv("API_ID", "23392712"))
-API_HASH = getenv("API_HASH", "7cb236b197b25c243fa83e7e0173d0e6")
+API_ID = int(getenv("API_ID", "0"))
+API_HASH = getenv("API_HASH", "")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 2. Bot Token (from @BotFather) 
+# 2. Bot Token (from @BotFather)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-BOT_TOKEN = getenv("BOT_TOKEN", "6371758660:AAGQ7KpJsfcfvxguSNT-_a9m-EuV1m-PXhY")
+BOT_TOKEN = getenv("BOT_TOKEN", "")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 3. MongoDB (from cloud.mongodb.com)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-MONGO_DB_URI = getenv("MONGO_DB_URI", "mongodb+srv://L2RKING:BWF_MUSIC1@l2rking.1ikcd.mongodb.net/?retryWrites=true&w=majority")
+MONGO_DB_URI = getenv("MONGO_DB_URI", "")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 4. Duration Limits (in minutes)
@@ -30,7 +30,7 @@ SONG_DOWNLOAD_DURATION = int(getenv("SONG_DOWNLOAD_DURATION_LIMIT", "5400"))
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 5. Logger Group / Channel (where bot sends startup log)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-LOGGER_ID = int(os.environ.get("LOGGER_ID", -1002111675614))
+LOGGER_ID = int(getenv("LOGGER_ID", "-1002111675614"))  # FIX: os.environ -> getenv
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 6. Owner ID (your Telegram user ID)
@@ -53,14 +53,14 @@ GIT_TOKEN = getenv("GIT_TOKEN", None)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 9. YouTube API (for fallback)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-YTPROXY_URL = getenv("YTPROXY_URL", 'https://tgapi.xbitcode.com')
-YT_API_KEY = getenv("YT_API_KEY", 'xbit_GjLUhA7Xsu_5Dr_xBdFZLr8LzorcKIkK')
+YTPROXY_URL = getenv("YTPROXY_URL", "https://tgapi.xbitcode.com")
+YT_API_KEY = getenv("YT_API_KEY", "")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 10. Cache Channel (where bot stores audio/video files)
 #     IMPORTANT: Bot and assistant MUST be members of this channel!
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-CACHE_CHANNEL_ID = int(getenv("CACHE_CHANNEL_ID", "-1004304730954"))  # <-- ये ID तुम्हारी actual cache channel की होनी चाहिए
+CACHE_CHANNEL_ID = int(getenv("CACHE_CHANNEL_ID", "-1004304730954"))  # ये ID तुम्हारी actual cache channel की होनी चाहिए
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 11. Support Channel & Group (for /start buttons)
@@ -69,7 +69,7 @@ SUPPORT_CHANNEL = getenv("SUPPORT_CHANNEL", "https://t.me/ALL_QUIZ_TAME")
 SUPPORT_CHAT = getenv("SUPPORT_CHAT", "https://t.me/BWF_MUSIC1")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 12. Auto‑leave settings
+# 12. Auto-leave settings
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 AUTO_LEAVING_ASSISTANT = getenv("AUTO_LEAVING_ASSISTANT", "False").lower() == "true"
 AUTO_SUGGESTION_MODE = getenv("AUTO_SUGGESTION_MODE", "False").lower() == "true"
@@ -78,8 +78,8 @@ AUTO_SUGGESTION_TIME = int(getenv("AUTO_SUGGESTION_TIME", "5400"))
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 13. Spotify (optional)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-SPOTIFY_CLIENT_ID = getenv("SPOTIFY_CLIENT_ID", "bcfe26b0ebc3428882a0b5fb3e872473")
-SPOTIFY_CLIENT_SECRET = getenv("SPOTIFY_CLIENT_SECRET", "907c6a054c214005aeae1fd752273cc4")
+SPOTIFY_CLIENT_ID = getenv("SPOTIFY_CLIENT_ID", "")
+SPOTIFY_CLIENT_SECRET = getenv("SPOTIFY_CLIENT_SECRET", "")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 14. Playlist & Cleanup
@@ -93,7 +93,7 @@ TG_VIDEO_FILESIZE_LIMIT = int(getenv("TG_VIDEO_FILESIZE_LIMIT", "1073741824"))
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 15. Assistant Sessions (multiple userbots)
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-STRING1 = getenv("STRING_SESSION", "BQDWZRoAX7EbQuKeyTghOE_3C9Ot-H0koHgrXOOqDF4lP166r3JjkCacClIbSoKjT5jSYFUKpDkm6hxnVHS-7ADjBCqWdn9VsI0R8OUabsjQD7bgNnvTHO-uPoGfjUzNCpyZFF7-vjA4m0cqb79yzoZmRSuj62bls6egCffjxm99SwbDj1CDJeOzrDZ78MpAU93Dj1ciphLJtiZH1u9_wXLylKKTI90lC74x3o0z8yUvzn8jIIT3TXBnRNQFk03G62UAo4Z87gHcixlVXtMvv6WW0uS_We7Iu6hEFtpYVZJS3M1GTM-zr-jjaPS6VuQkLqPlLZAzS6kRteCmkOYIdJjFlJn1lQAAAAFUrySxAA")
+STRING1 = getenv("STRING_SESSION", "")
 STRING2 = getenv("STRING_SESSION2", "")
 STRING3 = getenv("STRING_SESSION3", "")
 STRING4 = getenv("STRING_SESSION4", "")
@@ -140,8 +140,22 @@ DURATION_LIMIT = time_to_seconds(f"{DURATION_LIMIT_MIN}:00")
 SONG_DOWNLOAD_DURATION_LIMIT = time_to_seconds(f"{SONG_DOWNLOAD_DURATION}:00")
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 19. Validate support URLs (must start with http)
+# 19. Validate required vars & support URLs
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+_missing = [
+    name
+    for name, value in {
+        "API_ID": API_ID,
+        "API_HASH": API_HASH,
+        "BOT_TOKEN": BOT_TOKEN,
+        "MONGO_DB_URI": MONGO_DB_URI,
+        "STRING_SESSION": STRING1,
+    }.items()
+    if not value
+]
+if _missing:
+    raise SystemExit(f"[ERROR] - Missing required environment variables: {', '.join(_missing)}")
+
 if SUPPORT_CHANNEL and not re.match(r"(?:http|https)://", SUPPORT_CHANNEL):
     raise SystemExit("[ERROR] - Your SUPPORT_CHANNEL URL is invalid. It must start with https://")
 
