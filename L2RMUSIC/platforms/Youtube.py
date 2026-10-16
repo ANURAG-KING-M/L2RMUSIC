@@ -1,226 +1,158 @@
 import asyncio
 import os
 import re
-import sys
 from typing import Union, Optional, Tuple
-
-import aiohttp
 import yt_dlp
-from motor.motor_asyncio import AsyncIOMotorClient
-from py_yt import VideosSearch, Playlist
+import aiohttp
 from pyrogram.enums import MessageEntityType
 from pyrogram.types import Message
+from py_yt import VideosSearch, Playlist
+from motor.motor_asyncio import AsyncIOMotorClient
 
 from L2RMUSIC import LOGGER, app
 from L2RMUSIC.utils.formatters import time_to_seconds
 
-# ==========================================
-# CONFIG (sab secrets Railway Variables se aayenge)
-# ==========================================
-PLAYLIST_ID = int(os.getenv("PLAYLIST_ID", "-1003616869403"))
+# --- CONFIG (Load from environment, with new channel ID as default) ---
+PLAYLIST_ID = int(os.getenv("PLAYLIST_ID", "-1003616869403"))  # ✅ नई ID
 MONGO_DB_URI = os.getenv("MONGO_DB_URI", "mongodb+srv://BWFMUSIC:BWFMUSIC@cluster0.xwnup2l.mongodb.net/?retryWrites=true&w=majority")
 SHRUTI_API_URL = os.getenv("SHRUTI_API_URL", "https://api.shrutibots.site")
 SHRUTI_API_KEY = os.getenv("SHRUTI_API_KEY", "ShrutiBotsvfxRF6Qt1ejYXnovI3TG")
-DOWNLOAD_DIR = os.path.abspath(os.getenv("DOWNLOAD_DIR", "downloads"))
-COOKIE_FILE = os.path.abspath(os.getenv("COOKIE_FILE", "cookies.txt"))
-MIN_SIZE = 2048
+DOWNLOAD_DIR = os.getenv("DOWNLOAD_DIR", "downloads")
 
 logger = LOGGER(__name__)
 
-# MongoDB
-trackdb = None
-if MONGO_DB_URI:
-    try:
-        _mongo_async_ = AsyncIOMotorClient(MONGO_DB_URI, serverSelectionTimeoutMS=5000)
-        mongodb = _mongo_async_.L2RMUSIC
-        trackdb = mongodb.track_cache
-        logger.info("MongoDB connected successfully.")
-    except Exception as e:
-        logger.error(f"MongoDB Connection Error: {e}")
-        trackdb = None
-else:
-    logger.warning("MONGO_DB_URI not set, Telegram cache disabled.")
+# MongoDB Connection (safe)
+try:
+    _mongo_async_ = AsyncIOMotorClient(MONGO_DB_URI, serverSelectionTimeoutMS=5000)
+    mongodb = _mongo_async_.L2RMUSIC
+    trackdb = mongodb.track_cache
+    logger.info("MongoDB connected successfully.")
+except Exception as e:
+    logger.error(f"MongoDB Connection Error: {e}")
+    trackdb = None
 
+# Ensure download directory exists
 os.makedirs(DOWNLOAD_DIR, exist_ok=True)
 
 
 # ==========================================
-# HELPERS
-# ==========================================
-_ID_RE = re.compile(r"^[A-Za-z0-9_-]{11}$")
-
-
-def extract_video_id(link: str) -> Optional[str]:
-    """Extract video ID from watch / youtu.be / shorts / live / embed links or a bare ID."""
-    if not link:
-        return None
-    link = link.strip()
-    if _ID_RE.match(link):
-        return link
-    m = re.search(r"[?&]v=([A-Za-z0-9_-]{11})", link)
-    if m:
-        return m.group(1)
-    m = re.search(r"(?:youtu\.be/|/shorts/|/live/|/embed/|/v/)([A-Za-z0-9_-]{11})", link)
-    if m:
-        return m.group(1)
-    return None
-
-
-def _safe_name(name: str) -> str:
-    name = re.sub(r'[\\/:*?"<>|\n\r\t]', "", str(name)).strip()
-    return name[:100] or "file"
-
-
-def _cookie_opts() -> dict:
-    if os.path.exists(COOKIE_FILE):
-        return {"cookiefile": COOKIE_FILE}
-    return {}
-
-
-def _file_ok(path: Optional[str]) -> bool:
-    return bool(path) and os.path.exists(path) and os.path.getsize(path) > MIN_SIZE
-
-
-async def _shruti_fetch(video_id: str, is_video: bool) -> Optional[str]:
-    """Download from Shruti API into DOWNLOAD_DIR. Returns absolute path or None."""
-    if not SHRUTI_API_KEY:
-        return None
-    ext = "mp4" if is_video else "mp3"
-    final_path = os.path.join(DOWNLOAD_DIR, f"{video_id}.{ext}")
-    tmp_path = final_path + ".part"
-    params = {
-        "url": video_id,
-        "type": "video" if is_video else "audio",
-        "api_key": SHRUTI_API_KEY,
-    }
-    try:
-        timeout = aiohttp.ClientTimeout(total=600 if is_video else 300)
-        async with aiohttp.ClientSession(timeout=timeout) as session:
-            async with session.get(f"{SHRUTI_API_URL}/download", params=params) as resp:
-                if resp.status != 200:
-                    logger.error(f"Shruti API returned {resp.status}")
-                    return None
-                with open(tmp_path, "wb") as f:
-                    async for chunk in resp.content.iter_chunked(131072):
-                        f.write(chunk)
-        if _file_ok(tmp_path):
-            os.replace(tmp_path, final_path)
-            return final_path
-        logger.warning("Shruti file too small, removed.")
-    except Exception as e:
-        logger.error(f"Shruti download failed: {e}")
-    finally:
-        if os.path.exists(tmp_path):
-            try:
-                os.remove(tmp_path)
-            except Exception:
-                pass
-    return None
-
-
-async def _ytdlp_fetch(link: str, vid_id: str, is_video: bool) -> Optional[str]:
-    """yt-dlp fallback. Returns absolute path or None."""
-    opts = {
-        "format": "bestvideo[height<=720]+bestaudio/best[height<=720]/best" if is_video else "bestaudio/best",
-        "outtmpl": os.path.join(DOWNLOAD_DIR, f"{vid_id}.%(ext)s"),
-        "quiet": True,
-        "no_warnings": True,
-        "noplaylist": True,
-        "geo_bypass": True,
-        "nocheckcertificate": True,
-        **_cookie_opts(),
-    }
-    if is_video:
-        opts["merge_output_format"] = "mp4"
-
-    def _run():
-        with yt_dlp.YoutubeDL(opts) as ydl:
-            info = ydl.extract_info(link, download=True)
-            rd = info.get("requested_downloads")
-            if rd and rd[0].get("filepath"):
-                return rd[0]["filepath"]
-            return ydl.prepare_filename(info)
-
-    try:
-        loop = asyncio.get_running_loop()
-        path = await loop.run_in_executor(None, _run)
-        if path:
-            path = os.path.abspath(path)
-        if _file_ok(path):
-            return path
-        # merge ke baad extension badal sakta hai, isliye folder me dhundo
-        for ext in (["mp4", "mkv", "webm"] if is_video else ["m4a", "webm", "mp3", "opus"]):
-            p = os.path.join(DOWNLOAD_DIR, f"{vid_id}.{ext}")
-            if _file_ok(p):
-                return p
-    except Exception as e:
-        logger.error(f"yt-dlp fallback failed: {e}")
-    return None
-
-
-# ==========================================
-# STANDALONE FUNCTIONS (song.py plugin ke liye)
+# STANDALONE FUNCTIONS (For song.py plugin)
 # ==========================================
 async def download_song(link: str) -> Optional[str]:
+    """Download audio from YouTube using Shruti API."""
     video_id = extract_video_id(link)
     if not video_id:
         return None
-    path = os.path.join(DOWNLOAD_DIR, f"{video_id}.mp3")
-    if _file_ok(path):
-        return path
-    path = await _shruti_fetch(video_id, False)
-    if path:
-        return path
-    return await _ytdlp_fetch(f"https://www.youtube.com/watch?v={video_id}", video_id, False)
+    file_path = os.path.join(DOWNLOAD_DIR, f"{video_id}.mp3")
+    if os.path.exists(file_path) and os.path.getsize(file_path) > 2048:
+        return file_path
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            params = {"url": video_id, "type": "audio", "api_key": SHRUTI_API_KEY}
+            async with session.get(f"{SHRUTI_API_URL}/download", params=params, timeout=300) as resp:
+                if resp.status == 200:
+                    with open(file_path, "wb") as f:
+                        async for chunk in resp.content.iter_chunked(131072):
+                            f.write(chunk)
+                    if os.path.getsize(file_path) > 2048:
+                        return file_path
+                    else:
+                        os.remove(file_path)
+                else:
+                    logger.error(f"Shruti API error: {resp.status}")
+    except Exception as e:
+        logger.error(f"Song Download Error: {e}")
+    return None
 
 
 async def download_video(link: str) -> Optional[str]:
+    """Download video from YouTube using Shruti API."""
     video_id = extract_video_id(link)
     if not video_id:
         return None
-    path = os.path.join(DOWNLOAD_DIR, f"{video_id}.mp4")
-    if _file_ok(path):
-        return path
-    path = await _shruti_fetch(video_id, True)
-    if path:
-        return path
-    return await _ytdlp_fetch(f"https://www.youtube.com/watch?v={video_id}", video_id, True)
+    file_path = os.path.join(DOWNLOAD_DIR, f"{video_id}.mp4")
+    if os.path.exists(file_path) and os.path.getsize(file_path) > 2048:
+        return file_path
+
+    try:
+        async with aiohttp.ClientSession() as session:
+            params = {"url": video_id, "type": "video", "api_key": SHRUTI_API_KEY}
+            async with session.get(f"{SHRUTI_API_URL}/download", params=params, timeout=600) as resp:
+                if resp.status == 200:
+                    with open(file_path, "wb") as f:
+                        async for chunk in resp.content.iter_chunked(131072):
+                            f.write(chunk)
+                    if os.path.getsize(file_path) > 2048:
+                        return file_path
+                    else:
+                        os.remove(file_path)
+                else:
+                    logger.error(f"Shruti API error: {resp.status}")
+    except Exception as e:
+        logger.error(f"Video Download Error: {e}")
+    return None
+
+
+def extract_video_id(link: str) -> Optional[str]:
+    """Extract video ID from various YouTube URL formats."""
+    if "v=" in link:
+        return link.split("v=")[-1].split("&")[0]
+    elif "youtu.be/" in link:
+        return link.split("/")[-1].split("?")[0]
+    return None
 
 
 # ==========================================
 # MAIN YOUTUBE API CLASS
 # ==========================================
 class YouTubeAPI:
+    """Handles YouTube metadata fetching, downloading, and caching."""
+
     def __init__(self):
         self.base = "https://www.youtube.com/watch?v="
         self.regex = r"(?:youtube\.com|youtu\.be)"
         self.listbase = "https://youtube.com/playlist?list="
+        self.valid_exts = ["m4a", "mp4", "mp3", "webm"]
 
     def _find_file(self, vid_id: str, is_video: bool = False) -> Optional[str]:
-        """Video ke liye sirf video files, audio ke liye sirf audio files."""
-        exts = ["mp4", "mkv"] if is_video else ["mp3", "m4a", "opus", "webm"]
-        for ext in exts:
+        """Search local directory for an existing file of the given video ID."""
+        if not os.path.exists(DOWNLOAD_DIR):
+            return None
+        # Preferred extension based on type
+        ext = "mp4" if is_video else "mp3"
+        preferred_path = os.path.join(DOWNLOAD_DIR, f"{vid_id}.{ext}")
+        if os.path.exists(preferred_path) and os.path.getsize(preferred_path) > 2048:
+            return os.path.abspath(preferred_path)
+        # Fallback: check all extensions
+        for ext in self.valid_exts:
             filepath = os.path.join(DOWNLOAD_DIR, f"{vid_id}.{ext}")
             if os.path.exists(filepath):
-                if os.path.getsize(filepath) > MIN_SIZE:
+                if os.path.getsize(filepath) > 2048:
                     return os.path.abspath(filepath)
-                try:
-                    os.remove(filepath)
-                except Exception:
-                    pass
+                else:
+                    try:
+                        os.remove(filepath)
+                    except:
+                        pass
         return None
 
     async def _upload_to_cache(self, vid_id: str, file_path: str, title: str, is_video: bool):
+        """Upload file to Telegram channel and store message ID in DB (with error handling)."""
         if trackdb is None or not os.path.exists(file_path):
             return
         try:
             db_id = f"{vid_id}_video" if is_video else vid_id
-            if await trackdb.find_one({"vid_id": db_id}):
+            # Check if already cached
+            exists = await trackdb.find_one({"vid_id": db_id})
+            if exists:
                 return
 
             logger.info(f"📤 Uploading to Channel: {title}")
             mention = app.me.mention if app.me else "Bot"
             cap = f"**Song:** {title}\n**ID:** `{vid_id}`\n**Saved by:** {mention}"
+
+            # Try to send media – catch any peer/permission errors
             try:
                 if is_video:
                     msg = await app.send_video(PLAYLIST_ID, file_path, caption=cap, supports_streaming=True)
@@ -228,50 +160,23 @@ class YouTubeAPI:
                     msg = await app.send_audio(PLAYLIST_ID, file_path, caption=cap, title=title)
             except Exception as send_err:
                 logger.warning(f"Cannot send to channel (ID: {PLAYLIST_ID}): {send_err}")
-                return
+                return  # Don't store in DB if upload fails
 
             if msg:
                 await trackdb.update_one(
                     {"vid_id": db_id},
-                    {"$set": {
-                        "message_id": msg.id,
-                        "title": title,
-                        "type": "video" if is_video else "audio",
-                    }},
-                    upsert=True,
+                    {
+                        "$set": {
+                            "message_id": msg.id,
+                            "title": title,
+                            "type": "video" if is_video else "audio"
+                        }
+                    },
+                    upsert=True
                 )
                 logger.info(f"✅ Upload Complete (Msg ID: {msg.id})")
         except Exception as e:
             logger.error(f"Cache Upload Error: {e}")
-
-    async def video(self, link: str, videoid: Union[bool, str] = None):
-        """Direct stream URL (yt-dlp -g). Returns (1, url) ya (0, error)."""
-        if videoid:
-            link = self.base + link
-        if "&" in link:
-            link = link.split("&")[0]
-        cmd = [
-            sys.executable, "-m", "yt_dlp",
-            "--no-warnings", "--no-playlist",
-            "-g",
-            "-f", "best[height<=?720][width<=?1280]/best",
-        ]
-        if os.path.exists(COOKIE_FILE):
-            cmd += ["--cookies", COOKIE_FILE]
-        cmd.append(link)
-        try:
-            proc = await asyncio.create_subprocess_exec(
-                *cmd,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-            )
-            stdout, stderr = await proc.communicate()
-            if stdout:
-                return 1, stdout.decode().split("\n")[0]
-            return 0, stderr.decode()
-        except Exception as e:
-            logger.error(f"video stream url error: {e}")
-            return 0, str(e)
 
     async def download(
         self,
@@ -282,9 +187,12 @@ class YouTubeAPI:
         songaudio: Union[bool, str] = None,
         songvideo: Union[bool, str] = None,
         format_id: Union[bool, str] = None,
-        title: Union[bool, str] = None,
+        title: Union[bool, str] = None
     ) -> Tuple[Optional[str], bool]:
-        """Returns (absolute_file_path, success)."""
+        """
+        Main download method. Returns (file_path, success).
+        Tries local cache → DB cache → Shruti API → yt-dlp fallback.
+        """
         if videoid:
             link = self.base + link
         if "&" in link:
@@ -293,68 +201,26 @@ class YouTubeAPI:
         if not vid_id:
             logger.error("Invalid YouTube link")
             return None, False
-        link = self.base + vid_id
 
-        # --- song.py: custom format download ---
-        if songvideo or songaudio:
-            fname = _safe_name(title or vid_id)
-            if songvideo:
-                opts = {
-                    "format": f"{format_id}+bestaudio/best" if format_id else "bestvideo[height<=720]+bestaudio/best",
-                    "outtmpl": os.path.join(DOWNLOAD_DIR, f"{fname}.%(ext)s"),
-                    "merge_output_format": "mp4",
-                    "quiet": True,
-                    "no_warnings": True,
-                    "noplaylist": True,
-                    **_cookie_opts(),
-                }
-                final = os.path.join(DOWNLOAD_DIR, f"{fname}.mp4")
-            else:
-                opts = {
-                    "format": f"{format_id}/bestaudio/best" if format_id else "bestaudio/best",
-                    "outtmpl": os.path.join(DOWNLOAD_DIR, f"{fname}.%(ext)s"),
-                    "quiet": True,
-                    "no_warnings": True,
-                    "noplaylist": True,
-                    "postprocessors": [{
-                        "key": "FFmpegExtractAudio",
-                        "preferredcodec": "mp3",
-                        "preferredquality": "192",
-                    }],
-                    **_cookie_opts(),
-                }
-                final = os.path.join(DOWNLOAD_DIR, f"{fname}.mp3")
+        is_video = bool(video or songvideo)
+        title = title or vid_id
 
-            def _song_dl():
-                with yt_dlp.YoutubeDL(opts) as ydl:
-                    ydl.download([link])
-
-            try:
-                loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, _song_dl)
-                if _file_ok(final):
-                    return final, True
-            except Exception as e:
-                logger.error(f"song download error: {e}")
-            return None, False
-
-        is_video = bool(video)
-
-        # 1. Local cache
+        # 1. Local Cache
         local_path = self._find_file(vid_id, is_video)
         if local_path:
             logger.info(f"✅ Found local file: {local_path}")
             return local_path, True
 
-        # 2. Telegram channel cache
+        # 2. Database Cache (via Telegram) – with proper exception handling
         if trackdb is not None:
             try:
                 db_id = f"{vid_id}_video" if is_video else vid_id
                 doc = await asyncio.wait_for(trackdb.find_one({"vid_id": db_id}), timeout=5.0)
                 if doc and "message_id" in doc:
                     try:
-                        msg = await app.get_messages(PLAYLIST_ID, doc["message_id"])
+                        msg = await app.get_messages(PLAYLIST_ID, doc['message_id'])
                     except Exception as get_err:
+                        # If we can't fetch from channel (peer invalid, not member, etc.)
                         logger.warning(f"Cache retrieval failed (channel {PLAYLIST_ID}): {get_err}")
                         msg = None
                     if msg and not msg.empty:
@@ -362,55 +228,86 @@ class YouTubeAPI:
                         if media:
                             temp_path = os.path.join(DOWNLOAD_DIR, f"{vid_id}.{'mp4' if is_video else 'mp3'}")
                             file = await app.download_media(media.file_id, file_name=temp_path)
-                            if file:
-                                file = os.path.abspath(file)
-                                if _file_ok(file):
-                                    logger.info(f"✅ Downloaded from Telegram cache: {file}")
-                                    return file, True
+                            if file and os.path.getsize(file) > 2048:
+                                logger.info(f"✅ Downloaded from Telegram cache: {file}")
+                                return file, True
             except Exception as e:
                 logger.error(f"DB Fetch Error: {e}")
 
         # 3. Shruti API
-        logger.info(f"🛡️ Using Shruti API for {vid_id}")
-        path = await _shruti_fetch(vid_id, is_video)
-        if path:
-            asyncio.create_task(self._upload_to_cache(vid_id, path, str(title or vid_id), is_video))
-            logger.info(f"✅ Downloaded via Shruti API: {path}")
-            return path, True
+        ext = "mp4" if is_video else "mp3"
+        type_str = "video" if is_video else "audio"
+        file_path = os.path.join(DOWNLOAD_DIR, f"{vid_id}.{ext}")
+        try:
+            logger.info(f"🛡️ Using Shruti API for {vid_id}")
+            async with aiohttp.ClientSession() as session:
+                params = {"url": vid_id, "type": type_str, "api_key": SHRUTI_API_KEY}
+                async with session.get(f"{SHRUTI_API_URL}/download", params=params, timeout=300) as resp:
+                    if resp.status == 200:
+                        with open(file_path, "wb") as f:
+                            async for chunk in resp.content.iter_chunked(131072):
+                                f.write(chunk)
+                        if os.path.exists(file_path) and os.path.getsize(file_path) > 2048:
+                            asyncio.create_task(self._upload_to_cache(vid_id, file_path, title, is_video))
+                            logger.info(f"✅ Downloaded via Shruti API: {file_path}")
+                            return file_path, True
+                        else:
+                            os.remove(file_path)
+                            logger.warning("Downloaded file too small, removed.")
+                    else:
+                        logger.error(f"Shruti API returned {resp.status}")
+        except Exception as e:
+            logger.error(f"API Download Failed: {e}")
 
-        # 4. yt-dlp fallback
-        logger.info(f"🔄 Using yt-dlp fallback for {vid_id}")
-        path = await _ytdlp_fetch(link, vid_id, is_video)
-        if path:
-            logger.info(f"✅ Downloaded via yt-dlp: {path}")
-            asyncio.create_task(self._upload_to_cache(vid_id, path, str(title or vid_id), is_video))
-            return path, True
+        # 4. Ultimate Fallback: yt-dlp
+        try:
+            logger.info(f"🔄 Using yt-dlp fallback for {vid_id}")
+            opts = {
+                'format': 'bestaudio/best' if not is_video else 'best',
+                'outtmpl': os.path.join(DOWNLOAD_DIR, f"{vid_id}.%(ext)s"),
+                'quiet': True,
+                'no_warnings': True,
+            }
+            def _ytdl_download():
+                with yt_dlp.YoutubeDL(opts) as ydl:
+                    info = ydl.extract_info(link, download=True)
+                    return ydl.prepare_filename(info)
+
+            loop = asyncio.get_event_loop()
+            dl_path = await loop.run_in_executor(None, _ytdl_download)
+            if dl_path and os.path.exists(dl_path) and os.path.getsize(dl_path) > 2048:
+                logger.info(f"✅ Downloaded via yt-dlp: {dl_path}")
+                return dl_path, True
+        except Exception as e:
+            logger.error(f"yt-dlp fallback failed: {e}")
 
         return None, False
 
-    # --- Metadata ---
+    # --- Metadata Methods (with proper error handling) ---
     async def exists(self, link: str, videoid: Union[bool, str] = None) -> bool:
         if videoid:
             link = self.base + link
         return bool(re.search(self.regex, link))
 
     async def url(self, message_1: Message) -> Optional[str]:
+        """Extract YouTube URL from a Telegram message."""
         messages = [message_1]
         if message_1.reply_to_message:
             messages.append(message_1.reply_to_message)
         for message in messages:
-            text = message.text or message.caption or ""
-            for entities in (message.entities, message.caption_entities):
-                if not entities:
-                    continue
-                for entity in entities:
+            if message.entities:
+                for entity in message.entities:
                     if entity.type == MessageEntityType.URL:
+                        text = message.text or message.caption
                         return text[entity.offset: entity.offset + entity.length]
+            elif message.caption_entities:
+                for entity in message.caption_entities:
                     if entity.type == MessageEntityType.TEXT_LINK:
                         return entity.url
         return None
 
     async def details(self, link: str, videoid: Union[bool, str] = None):
+        """Get title, duration, thumbnail, video ID."""
         if videoid:
             link = self.base + link
         if "&" in link:
@@ -475,7 +372,8 @@ class YouTubeAPI:
         try:
             plist = await Playlist.get(link)
             videos = plist.get("videos") or []
-            return [data.get("id") for data in videos[:limit] if data.get("id")]
+            ids = [data.get("id") for data in videos[:limit] if data.get("id")]
+            return ids
         except Exception as e:
             logger.error(f"playlist error: {e}")
             return []
@@ -488,43 +386,45 @@ class YouTubeAPI:
         try:
             results = VideosSearch(link, limit=1)
             for result in (await results.next())["result"]:
+                title = result["title"]
+                duration_min = result["duration"]
                 vidid = result["id"]
+                yturl = result["link"]
+                thumbnail = result["thumbnails"][0]["url"].split("?")[0]
                 return {
-                    "title": result["title"],
-                    "link": result["link"],
+                    "title": title,
+                    "link": yturl,
                     "vidid": vidid,
-                    "duration_min": result["duration"],
-                    "thumb": result["thumbnails"][0]["url"].split("?")[0],
+                    "duration_min": duration_min,
+                    "thumb": thumbnail
                 }, vidid
         except Exception as e:
             logger.error(f"track error: {e}")
-        raise ValueError("Track not found")
+            raise ValueError("Track not found")
 
     async def formats(self, link: str, videoid: Union[bool, str] = None):
         if videoid:
             link = self.base + link
         if "&" in link:
             link = link.split("&")[0]
-        ytdl_opts = {"quiet": True, "no_warnings": True, **_cookie_opts()}
-
-        def _get_formats():
-            with yt_dlp.YoutubeDL(ytdl_opts) as ydl:
-                out = []
-                r = ydl.extract_info(link, download=False)
-                for f in r.get("formats", []):
-                    if "dash" not in str(f.get("format", "")).lower():
-                        out.append({
-                            "format": f.get("format"),
-                            "filesize": f.get("filesize"),
-                            "format_id": f.get("format_id"),
-                            "ext": f.get("ext"),
-                            "format_note": f.get("format_note"),
-                            "yturl": link,
-                        })
-                return out
-
+        ytdl_opts = {"quiet": True, "no_warnings": True}
         try:
-            loop = asyncio.get_running_loop()
+            def _get_formats():
+                with yt_dlp.YoutubeDL(ytdl_opts) as ydl:
+                    formats_available = []
+                    r = ydl.extract_info(link, download=False)
+                    for f in r.get("formats", []):
+                        if "dash" not in str(f.get("format", "")).lower():
+                            formats_available.append({
+                                "format": f.get("format"),
+                                "filesize": f.get("filesize"),
+                                "format_id": f.get("format_id"),
+                                "ext": f.get("ext"),
+                                "format_note": f.get("format_note"),
+                                "yturl": link
+                            })
+                    return formats_available
+            loop = asyncio.get_event_loop()
             res = await loop.run_in_executor(None, _get_formats)
             return res, link
         except Exception as e:
@@ -546,4 +446,5 @@ class YouTubeAPI:
             return "Unknown", "0:00", "https://telegra.ph/file/default.jpg", ""
 
 
+# Global instance
 YouTube = YouTubeAPI()
